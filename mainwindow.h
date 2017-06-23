@@ -7,6 +7,7 @@
 #include <QtSerialPort/QSerialPort>
 #include <QTextStream>
 #include <QObject>
+#include <QFile>
 #include <QGraphicsPixmapItem>
 #include <ctime>
 
@@ -27,6 +28,7 @@ private slots:
     void writeData(const QByteArray &data);
     void readData();
     void delay();
+    void clearHoughMatrix();
     void handleError(QSerialPort::SerialPortError error);
 
 
@@ -41,6 +43,8 @@ private:
     int resolution;
     int scale;
     int bufferingTime;
+    QFile *file;
+    int** houghMatrix;
 };
 
 #endif // MAINWINDOW_H

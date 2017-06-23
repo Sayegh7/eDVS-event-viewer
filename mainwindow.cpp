@@ -7,6 +7,8 @@
 #include <QtSerialPort/QSerialPort>
 #include <chrono>
 #include <iostream>
+#include <math.h>
+#define PI 3.14159265
 
 
 
@@ -30,6 +32,11 @@ MainWindow::MainWindow(QWidget *parent) :
     previousTime = 0;
     resolution = 128;
     scale = 5;
+    houghMatrix = new int*[180];
+    for(int i = 0; i < 180; ++i)
+        houghMatrix[i] = new int[364];
+
+
 
     image = new QImage(this->resolution, this->resolution, QImage::Format_RGB32);
     QRgb value;
@@ -41,6 +48,9 @@ MainWindow::MainWindow(QWidget *parent) :
             this->image->setPixel(i, j, value);
         }
     }
+    QString filename="Data.txt";
+    file = new QFile( filename );
+
     QPixmap pixmap(1,1);
     pixmap.convertFromImage(*image);
     pixmap = pixmap.scaled(this->resolution*this->scale,this->resolution*this->scale);
@@ -60,7 +70,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
 }
 
-
+void MainWindow::clearHoughMatrix(){
+    memset(houghMatrix, 0, sizeof(houghMatrix[0][0]) * 180 * 364);
+}
 
 void MainWindow::openSerialPort()
 {
@@ -95,97 +107,6 @@ void MainWindow::delay()
         QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
 }
 
-
-
-void MainWindow::readData()
-{
-
-    QByteArray data = serial->readAll();
-
-
-    char x; char polarity;
-    char y; char validEvent;
-//    std::cout << data.length()<< std::endl;
-    for(int a = 0; a < data.length(); a+=2){
-     validEvent = (data[a] & 0x80) >> 7;
-     if(validEvent == 0){
-        continue;
-     }
-     y = data[a] & 0x7f;
-     x = data[a+1] & 0x7f;
-     polarity = (data[a+1] & 0x80) >> 7;
-
-
-     if((int) polarity == 0){
-        image->setPixel((int)x, (int)y, qRgb(0, 0, 0));
-     }else{
-        image->setPixel((int)x, (int)y, qRgb(255, 255, 255));
-     }
-
-
-
-    }
-
-    QPixmap pixmap(1,1);
-    pixmap.convertFromImage(*image);
-    pixmap = pixmap.scaled(this->resolution*this->scale,this->resolution*this->scale);
-    pixItem->setPixmap(pixmap);
-    image = new QImage(this->resolution, this->resolution, QImage::Format_RGB32);
-    image->fill(QColor(127, 127, 127, 255));
-
-
-//    if(data.length()>=2){
-//    }else{
-//        x = 0;
-//        polarity = 0;
-//    }
-
-
-//    QTextStream out(stdout);
-//    QString xString = toString(x);
-//    QString yString = toString(y);
-//    QString pString = toString(polarity);
-//    out << "Y: " << (int)y << ' ' << "X: " << (int)x << ' ' << "Polarity: " << (int)polarity << endl;
-
-
-    //EXP
-
-//    std::cout << now << std::endl;
-//    if(previousTime == 0){
-//        previousTime = now;
-//    }
-
-//    if(now - previousTime <= this->bufferingTime){
-//        if((int) polarity == 0){
-//           image->setPixel((int)x, (int)y, qRgb(0, 0, 0));
-//        }else{
-//           image->setPixel((int)x, (int)y, qRgb(255, 255, 255));
-//        }
-
-//    }else{
-//        if((int) polarity == 0){
-//           image->setPixel((int)x, (int)y, qRgb(0, 0, 0));
-//        }else{
-//           image->setPixel((int)x, (int)y, qRgb(255, 255, 255));
-//        }
-
-//        QPixmap pixmap(1,1);
-//        pixmap.convertFromImage(*image);
-//        pixmap = pixmap.scaled(this->resolution*this->scale,this->resolution*this->scale);
-//        pixItem->setPixmap(pixmap);
-//        previousTime = now;
-//        image = new QImage(this->resolution, this->resolution, QImage::Format_RGB32);
-//        image->fill(QColor(127, 127, 127, 255));
-
-//    }
-
-
-
-
-
-}
-
-
 void MainWindow::closeSerialPort()
 {
     if (serial->isOpen())
@@ -194,6 +115,88 @@ void MainWindow::closeSerialPort()
 
     out << ("Disconnected");
 }
+
+
+
+void MainWindow::readData()
+{
+
+    QByteArray data = serial->readAll();
+
+    char x; char polarity;
+    char y; char validEvent;
+
+    for(int a = 0; a < data.length(); a+=2){
+     validEvent = (data[a] & 0x80) >> 7;
+     if(validEvent == 0){
+        continue;
+     }
+     y = data[a] & 0x7f;
+     x = data[a+1] & 0x7f;
+     polarity = (data[a+1] & 0x80) >> 7;
+     int r;
+     if((int) polarity == 0){
+        image->setPixel((int)x, (int)y, qRgb(255, 0, 0));
+
+     }else{
+        image->setPixel((int)x, (int)y, qRgb(0, 0, 255));
+
+     }
+
+     for(int angle = 0; angle < 180; angle++){
+         r = (int)x * cos(angle) + (int)y * sin(angle);
+         int radius = std::abs(r);
+              houghMatrix[angle][radius]++;
+     }
+
+
+
+    }
+
+
+
+
+    QPixmap pixmap(1,1);
+    pixmap.convertFromImage(*image);
+
+
+//    draw lines
+    for(int row = 0; row < 180; row++){
+        for(int col= 0; col< 364; col++){
+            if(houghMatrix[row][col] > 30 && houghMatrix[row][col] < 182){
+                int maxLength = 182;
+                double px = (col) * cos(row);
+                double py = (col)* sin(row);
+                double p1_x = px + maxLength * cos(row);
+                double p1_y = py + maxLength * sin(row);
+                double p2_x = px - maxLength * cos(row);
+                double p2_y = py - maxLength * sin(row);
+
+                QPainter p (&pixmap);
+                p.setPen (Qt::green);
+//                                p.drawLine ((int)p1_x, (int)p1_y, (int)p2_x, (int)p2_y);
+                                p.drawLine (p1_x, p1_y, px, py);
+//                this->statusBar()->showMessage(QString("%1").arg(p2_y));
+                p.end ();
+            }
+            houghMatrix[row][col] = 0;
+
+        }
+    }
+
+
+    pixmap = pixmap.scaled(this->resolution*this->scale,this->resolution*this->scale);
+    pixItem->setPixmap(pixmap);
+    image = new QImage(this->resolution, this->resolution, QImage::Format_RGB32);
+    image->fill(QColor(127, 127, 127, 255));
+
+
+
+
+
+
+}
+
 
 void MainWindow::handleError(QSerialPort::SerialPortError error)
 {
