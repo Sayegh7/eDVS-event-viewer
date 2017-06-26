@@ -39,7 +39,7 @@ private:
     QGraphicsScene *scene;
     QImage *image;
     QGraphicsPixmapItem *pixItem;
-    __int64 previousTime;
+    int previousTime;
     int resolution;
     int scale;
     int bufferingTime;
