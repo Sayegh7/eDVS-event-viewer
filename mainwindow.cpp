@@ -33,8 +33,11 @@ MainWindow::MainWindow(QWidget *parent) :
     resolution = 128;
     scale = 5;
     houghMatrix = new int*[180];
-    for(int i = 0; i < 180; ++i)
+    for(int i = 0; i < 180; ++i){
         houghMatrix[i] = new int[364];
+        std::fill_n(houghMatrix[i], 364, 0);
+
+    }
 
 
 
@@ -67,8 +70,8 @@ MainWindow::MainWindow(QWidget *parent) :
 //    x = QString("E+\nE+").toUtf8();
 //    this->writeData(x);
 
-    for(int length = 0; length < 3; length++){
-        image->setPixel(100-length, 100-length, qRgb(255, 255, 255));
+    for(int length = 0; length < 10; length++){
+        image->setPixel(100, 100+length, qRgb(255, 255, 255));
     }
 
     readData();
@@ -165,10 +168,15 @@ void MainWindow::readData()
 
     int r;
 
-    for(int coordinate = 100; coordinate > 97; coordinate--){
-        for(int angle = 0; angle < 180; angle+=45){
-            r = coordinate * cos(angle) + coordinate * sin(angle);
+    for(int coordinate = 100; coordinate < 110; coordinate++){
+        for(int angle = 0; angle < 180; angle++){
+            r = coordinate * cos(degrees_to_radians(angle)) + coordinate * sin(degrees_to_radians(angle));
+            if(r < 0){
+                continue;
+            }
             int radius = r + 182;
+//            std::cout << houghMatrix[angle][radius] << std::endl;
+
             houghMatrix[angle][radius]++;
             std::cout << "angle: " << angle << ", r: " << radius-182 << std::endl;
         }
@@ -181,44 +189,56 @@ void MainWindow::readData()
     QPixmap pixmap(1,1);
     pixmap.convertFromImage(*image);
 
+            // 0 degrees start at top right
+    //90 degrees at bottom left
 
+//                    double px = 100 * round(cos(degrees_to_radians(0)));
+//                    double py = 100 * round(sin(degrees_to_radians(0)));
+//                    double p1_x = 0 * round(cos(degrees_to_radians(0)));
+//                    double p1_y = 0 * round(sin(degrees_to_radians(0)));
+//                    double p2_x =  120 * round(cos(degrees_to_radians(0)));
+//                    double p2_y =  120* round(sin(degrees_to_radians(0)));
+//                    std::cout << "px: " << px << ", py: " << py << std::endl;
 
-                    double px = 137 * round(cos(degrees_to_radians(45)));
-                    double py = 137 * round(sin(degrees_to_radians(45)));
-                    double p1_x = px + 90 * round(cos(degrees_to_radians(45)));
-                    double p1_y = py + 90 * round(sin(degrees_to_radians(45)));
-                    double p2_x = px - 90 * round(cos(degrees_to_radians(45)));
-                    double p2_y = py - 90* round(sin(degrees_to_radians(45)));
-                    std::cout << "px: " << px << ", py: " << py << std::endl;
-
-                    QPainter p (&pixmap);
-                    p.setPen (Qt::green);
-                    p.drawLine (p1_x, p1_y, p2_x, p2_y);
-                    p.end ();
+//                    QPainter p (&pixmap);
+//                    p.setPen (Qt::green);
+//                    p.drawLine (p1_x, p1_y, p2_x, p2_y);
+//                    p.end ();
 
 
 //    draw lines
-//    for(int row = 0; row < 180; row++){
-//        for(int col= 0; col< 364; col++){
-//            if(houghMatrix[row][col] >= 3 && houghMatrix[row][col] < 182){
-//                int maxLength = 182;
-//                double px = (col-182) * cos(row);
-//                double py = (col-182)* sin(row);
-//                double p1_x = px + maxLength * cos(row);
-//                double p1_y = py + maxLength * sin(row);
-//                double p2_x = px - maxLength * cos(row);
-//                double p2_y = py - maxLength * sin(row);
+    for(int row = 0; row < 180; row++){
+        for(int col= 0; col< 364; col++){
+            if(houghMatrix[row][col] >= 10 ){
+                int maxLength = 182;
+                int angleOffset = 90;
+                double px = (col-maxLength) * round(cos(degrees_to_radians(row + angleOffset)));
+                double py = (col-maxLength)* round(sin(degrees_to_radians(row + angleOffset)));
+                double xBefore = (col-maxLength) * round(cos(degrees_to_radians(row)));
+                double yBefore = (col-maxLength)* round(sin(degrees_to_radians(row)));
+                if(std::abs(xBefore) == std::abs(px)){
+                    xBefore = 0;
+                }
+                if(std::abs(yBefore) == std::abs(py)){
+                    yBefore = 0;
+                }
 
-//                QPainter p (&pixmap);
-//                p.setPen (Qt::green);
-//                p.drawLine (p1_x, p1_y, px, py);
-//                p.end ();
+                double p1_x = px + maxLength * round(cos(degrees_to_radians(row + angleOffset))) + xBefore;
+                double p1_y = py + maxLength * round(sin(degrees_to_radians(row + angleOffset))) + yBefore;
+                double p2_x = px - maxLength * round(cos(degrees_to_radians(row + angleOffset))) + xBefore;
+                double p2_y = py - maxLength * round(sin(degrees_to_radians(row + angleOffset))) + yBefore;
+                std::cout << "Angle: " << row << " Radius: " << col-maxLength << std::endl;
+                QPainter p (&pixmap);
+                std::cout << houghMatrix[row][col] << std::endl;
+                p.setPen (Qt::green);
+                p.drawLine (p1_x, p1_y, p2_x, p2_y);
+                p.end ();
 
-//            }
-//                houghMatrix[row][col] = 0;
+            }
+                houghMatrix[row][col] = 0;
 
-//        }
-//    }
+        }
+    }
 
 
     pixmap = pixmap.scaled(this->resolution*this->scale,this->resolution*this->scale);
