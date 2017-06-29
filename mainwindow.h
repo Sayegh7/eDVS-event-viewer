@@ -28,6 +28,7 @@ private slots:
     void writeData(const QByteArray &data);
     void readData();
     void delay();
+    void drawLine(int, int);
     void clearHoughMatrix();
     void handleError(QSerialPort::SerialPortError error);
 
