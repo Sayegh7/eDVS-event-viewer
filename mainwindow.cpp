@@ -65,17 +65,19 @@ MainWindow::MainWindow(QWidget *parent) :
 
     view->setScene(scene);
     this->setCentralWidget(view);
-//    openSerialPort();
-//    QByteArray x;
-//    x = QString("E+\nE+").toUtf8();
-//    this->writeData(x);
+    openSerialPort();
+    QByteArray x;
 
-    for(int length = 0; length < 20; length++){
-        image->setPixel(75+(length*2), 100+length, qRgb(255, 255, 255));
-    }
+    //\nM+
+    x = QString("E-\nE-/nE-/n!M+\n!M+\n!MV0=100\n!MV1=100\nE+\nE+").toUtf8();
+    this->writeData(x);
+
+//    for(int length = 0; length < 20; length++){
+//        image->setPixel(75+(length*2), 100+length, qRgb(255, 255, 255));
+//    }
 
 
-    readData();
+//    readData();
 
 
 }
@@ -135,52 +137,52 @@ void MainWindow::closeSerialPort()
 void MainWindow::readData()
 {
 
-//    QByteArray data = serial->readAll();
-//    char x; char polarity;
-//    char y; char validEvent;
+    QByteArray data = serial->readAll();
+    char x; char polarity;
+    char y; char validEvent;
 
-//    for(int a = 0; a < data.length(); a+=2){
-//     validEvent = (data[a] & 0x80) >> 7;
-//     if(validEvent == 0){
-//        continue;
-//     }
-//     int r;
+    for(int a = 0; a < data.length(); a+=2){
+     validEvent = (data[a] & 0x80) >> 7;
+     if(validEvent == 0){
+        continue;
+     }
+     int r;
 
-//     y = data[a] & 0x7f;
-//     x = data[a+1] & 0x7f;
-//     polarity = (data[a+1] & 0x80) >> 7;
-//     if((int) polarity == 0){
-//        image->setPixel((int)x, (int)y, qRgb(255, 0, 0));
+     y = data[a] & 0x7f;
+     x = data[a+1] & 0x7f;
+     polarity = (data[a+1] & 0x80) >> 7;
+     if((int) polarity == 0){
+        image->setPixel((int)x, (int)y, qRgb(255, 0, 0));
 
-//     }else{
-//        image->setPixel((int)x, (int)y, qRgb(0, 0, 255));
+     }else{
+        image->setPixel((int)x, (int)y, qRgb(0, 0, 255));
 
-//     }
+     }
 
-//     for(int angle = 0; angle < 180; angle++){
-//         r = (int)x * cos(angle) + (int)y * sin(angle);
-//         int radius = std::abs(r);
-//              houghMatrix[angle][radius]++;
-//     }
+     for(int angle = 0; angle < 180; angle++){
+         r = (int)x * cos(degrees_to_radians(angle)) + (int)y * sin(degrees_to_radians(angle));
+         int radius = r + 182;
+              houghMatrix[angle][radius]++;
+     }
 
 
 
-//    }
-
-    int r;
-    int x = 0;
-    for(int coordinate = 100; coordinate < 120; coordinate++){
-        for(int angle = 0; angle < 180; angle++){
-            r = (75 + (x*2)) * cos(degrees_to_radians(angle)) + (coordinate)* sin(degrees_to_radians(angle));
-
-            int radius = r + 182;
-            std::cout << houghMatrix[angle][radius] << std::endl;
-
-            houghMatrix[angle][radius]++;
-            std::cout << "angle: " << angle << ", r: " << radius-182 << std::endl;
-        }
-        x++;
     }
+
+//    int r;
+//    int x = 0;
+//    for(int coordinate = 100; coordinate < 120; coordinate++){
+//        for(int angle = 0; angle < 180; angle++){
+//            r = (75 + (x*2)) * cos(degrees_to_radians(angle)) + (coordinate)* sin(degrees_to_radians(angle));
+
+//            int radius = r + 182;
+//            std::cout << houghMatrix[angle][radius] << std::endl;
+
+//            houghMatrix[angle][radius]++;
+//            std::cout << "angle: " << angle << ", r: " << radius-182 << std::endl;
+//        }
+//        x++;
+//    }
 
 
 
@@ -199,7 +201,7 @@ void MainWindow::readData()
 //    draw lines
     for(int row = 0; row < 180; row++){
         for(int col= 0; col< 364; col++){
-            if(houghMatrix[row][col] >= 20 ){
+            if(houghMatrix[row][col] >= 25 ){
                 //candidate line
                 int maxLength = 182;
                 int angleOffset = 90;
@@ -208,12 +210,6 @@ void MainWindow::readData()
                 double xBefore = (col-maxLength) * (cos(degrees_to_radians(row)));
                 double yBefore = (col-maxLength)* (sin(degrees_to_radians(row)));
 
-//                if(std::abs(xBefore) == std::abs(px)){
-//                    xBefore = 0;
-//                }
-//                if(std::abs(yBefore) == std::abs(py)){
-//                    yBefore = 0;
-//                }
                 std::cout << xBefore << std::endl;
                 std::cout << yBefore << std::endl;
                 double p1_x = px + maxLength * (cos(degrees_to_radians(row + angleOffset))) + xBefore;
